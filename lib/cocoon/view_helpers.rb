@@ -1,7 +1,5 @@
 module Cocoon
   module ViewHelpers
-
-
     # this will show a link to remove the current association. This should be placed inside the partial.
     # either you give
     # - *name* : the text of the link
@@ -18,7 +16,7 @@ module Cocoon
         link_to_remove_association(capture(&block), *args)
       elsif args.first.respond_to?(:object)
         form = args.first
-        association = form.object.class.to_s.tableize
+        association = form_object(form).class.to_s.tableize
         name = I18n.translate("cocoon.#{association}.remove", default: I18n.translate('cocoon.defaults.remove'))
 
         link_to_remove_association(name, *args)
@@ -26,12 +24,12 @@ module Cocoon
         name, f, html_options = *args
         html_options ||= {}
 
-        is_dynamic = f.object.new_record?
+        is_dynamic = form_object(f).new_record?
 
-        classes = []
-        classes << "remove_fields"
+        classes = %w( remove_fields )
         classes << (is_dynamic ? 'dynamic' : 'existing')
-        classes << 'destroyed' if f.object.marked_for_destruction?
+        classes << 'destroyed' if form_object(f).marked_for_destruction?
+
         html_options[:class] = [html_options[:class], classes.join(' ')].compact.join(' ')
 
         wrapper_class = html_options.delete(:wrapper_class)
@@ -108,7 +106,7 @@ module Cocoon
     # will create new Comment with author "Admin"
 
     def create_object(f, association, force_non_association_create=false)
-      assoc = f.object.class.reflect_on_association(association)
+      assoc = form_object(f).class.reflect_on_association(association)
 
       assoc ? create_object_on_association(f, association, assoc, force_non_association_create) : create_object_on_non_association(f, association)
     end
@@ -120,29 +118,25 @@ module Cocoon
     private
 
     def create_object_on_non_association(f, association)
-      builder_method = %W{build_#{association} build_#{association.to_s.singularize}}.select { |m| f.object.respond_to?(m) }.first
-      return f.object.send(builder_method) if builder_method
-      raise "Association #{association} doesn't exist on #{f.object.class}"
+      builder_method = %W{build_#{association} build_#{association.to_s.singularize}}.select { |m| form_object(f).respond_to?(m) }.first
+      return form_object(f).send(builder_method) if builder_method
+      raise "Association #{association} doesn't exist on #{form_object(f).class}"
     end
 
     def create_object_on_association(f, association, instance, force_non_association_create)
       if instance.class.name == "Mongoid::Relations::Metadata" || force_non_association_create
         create_object_with_conditions(instance)
       else
-        assoc_obj = nil
-
         # assume ActiveRecord or compatible
         if instance.collection?
-          assoc_obj = f.object.send(association).build
-          f.object.send(association).delete(assoc_obj)
+          assoc_obj = form_object(f).send(association).build
+          form_object(f).send(association).delete(assoc_obj)
         else
-          assoc_obj = f.object.send("build_#{association}")
-          f.object.send(association).delete
+          assoc_obj = form_object(f).send("build_#{association}")
+          form_object(f).send(association).delete
         end
 
-        assoc_obj = assoc_obj.dup if assoc_obj.frozen?
-
-        assoc_obj
+        assoc_obj.frozen? ? assoc_obj.dup : nil
       end
     end
 
@@ -155,5 +149,12 @@ module Cocoon
       instance.klass.new(*conditions)
     end
 
+    def form_object(f)
+      if f.object.respond_to?(:model) && !f.object.model.nil?
+        f.object.model
+      else
+        f.object
+      end
+    end
   end
 end
