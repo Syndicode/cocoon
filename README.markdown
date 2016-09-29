@@ -22,7 +22,11 @@ Furthermore, I would advise you to use either [Formtastic](https://github.com/ju
 Inside your `Gemfile` add the following:
 
 ```ruby
-gem "cocoon"
+gem 'cocoon', github: 'mlogix/cocoon', branch: 'master'
+```
+Original gem:
+```ruby
+gem 'cocoon'
 ```
 
 > Please note that for rails 4 you will need at least v1.2.0 or later.
