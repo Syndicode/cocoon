@@ -136,7 +136,7 @@ module Cocoon
           form_object(f).send(association).delete
         end
 
-        assoc_obj.frozen? ? assoc_obj.dup : nil
+        assoc_obj.frozen? ? assoc_obj.dup : assoc_obj
       end
     end
 
